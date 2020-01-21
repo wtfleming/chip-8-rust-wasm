@@ -1,5 +1,5 @@
 [package]
-name = "chip-8-rust"
+name = "chip_8_rust"
 version = "0.1.0"
 authors = ["Will Fleming <wfleming77@gmail.com>"]
 edition = "2018"
