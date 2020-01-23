@@ -73,7 +73,6 @@ pub struct Cpu {
     // Index register
     pub i: u16,
 
-
     // The stack is an array of 16 16-bit values
     pub stack: [u16; 16],
     // Stack pointer

@@ -19,27 +19,23 @@ import("./crate/pkg/index.js").then(wasm => {
 
   const startButton = document.getElementById("start-button");
   const stopButton = document.getElementById("stop-button");
+  const stepButton = document.getElementById("step-button");
 
   startButton.addEventListener('click', () => {
     isRunning = true;
     startButton.disabled = true;
     stopButton.disabled = false;
+    stepButton.disabled = true;
   });
-
 
   stopButton.addEventListener('click', () => {
     isRunning = false;
     startButton.disabled = false;
     stopButton.disabled = true;
+    stepButton.disabled = false;
   });
 
-
-  const stepButton = document.getElementById("step-button");
   stepButton.addEventListener('click', () => {
-    // button.disabled = true;
-    // wasm.draw_single_threaded(context, CANVAS_WIDTH, CANVAS_HEIGHT);
-    // button.disabled = false;
-
     doStep(wasm);
   });
 
