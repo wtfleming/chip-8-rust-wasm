@@ -4,6 +4,17 @@
 
 The included programs are from https://www.zophar.net/pdroms/chip8/chip-8-games-pack.html and are in the public domain.
 
+
+
+```
+cd chip_8_wasm
+npm install
+npm start
+
+
+npm run build
+```
+
 ```
 cargo run
 ```

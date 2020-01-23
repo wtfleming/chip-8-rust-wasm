@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>CHIP-8 Emulator</title>
+    <link href="https://fonts.googleapis.com/css?family=VT323&display=swap" rel="stylesheet">
+
+    <style>
+     canvas {
+       image-rendering: -moz-crisp-edges;
+       image-rendering: -webkit-crisp-edges;
+       image-rendering: pixelated;
+       image-rendering: crisp-edges;
+     }
+
+     body {
+       background: #eaeaea;
+       width: 512px;
+       display: grid;
+       grid-template-columns: 50% 25% 25%;
+       margin: 0 auto;
+       grid-template-rows: 50px 260px; 30px; 300px;
+     }
+
+     .screen {
+       /* height: 256px;
+          width: 512px; */
+       grid-column: 1 / span 3;
+     }
+     header {
+       grid-column: 1 / span 3;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+     }
+
+     .controls {
+       grid-column: 1 / span 3;
+       display: flex;
+       justify-content: center;
+       padding: 10px;
+     }
+
+     .registers,
+     .misc,
+     .memory {
+       font-family: 'VT323', monospace;
+       font-size: 20px;
+       display: flex;
+     }
+    </style>
+
+  </head>
+  <body>
+    <header>
+      <h1>CHIP-8</h1>
+    </header>
+
+    <div class="screen">
+      <canvas id="chip8-canvas" width="64" height="32" style="transform: scale(8); transform-origin: top left"></canvas>
+      <!-- <canvas id="chip8-canvas" width="64" height="32"></canvas> -->
+    </div>
+
+    <div class="controls">
+      <button id="start-button">Start</button>
+      <button id="stop-button" disabled>Stop</button>
+      <button id="reset-button" disabled>Reset</button>
+      <button id="step-button">Step</button>
+    </div>
+
+
+    <div class="memory" id="memory"></div>
+    <div class="registers" id="registers"></div>
+    <div class="misc" id="misc">
+      PC: 0<br />
+      I: 0
+    </div>
+
+
+    <script src="index.js"></script>
+  </body>
+</html>

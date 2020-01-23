@@ -21,9 +21,6 @@
 
 
 
-
-
-
 // There is an Index register I and a program counter (pc) which can have a value from 0x000 to 0xFFF
 
 // The systems memory map:
@@ -51,6 +48,18 @@
 // In modern CHIP-8 implementations, where the interpreter is running natively outside the 4K memory space, there is no need to avoid the lower 512 bytes of memory (0x000-0x200), and it is common to store font data there.
 
 
+#[derive(Debug)]
+pub struct EmulateCycleError {
+    pub message: String,
+}
+
+// impl EmulateCycleError {
+//     fn description(&self) -> &str {
+//         &self.string
+//     }
+// }
+
+
 pub struct Cpu {
     // Memory
     pub memory: [u8; 4096],
@@ -69,7 +78,11 @@ pub struct Cpu {
     pub stack: [u16; 16],
     // Stack pointer
     pub sp: u8,
+
+    // 64x32 pixels
+    pub display: [bool; 2048],
 }
+
 
 impl Cpu {
     pub fn new() -> Cpu {
@@ -79,6 +92,7 @@ impl Cpu {
               i: 0,
               stack: [0; 16],
               sp: 0,
+              display: [false; 2048],
         }
     }
 
@@ -99,14 +113,13 @@ impl Cpu {
 
 
 
-    pub fn emulate_cycle(&mut self) {
+    //    pub fn emulate_cycle(&mut self) -> Result<(), &'static str> {
+    pub fn emulate_cycle(&mut self) -> Result<(), EmulateCycleError> {
         // println!("{:X}", opcode);
 
         let opcode: u16 = self.fetch_current_opcode();
 
         match opcode {
-
-
             0x00EE => {
                 // 00EE - RET
                 // Return from a subroutine.
@@ -115,6 +128,7 @@ impl Cpu {
                 println!("val: {:X}", self.stack[self.sp as usize]);
 
                 self.pc = self.stack[self.sp as usize];
+                self.pc += 2;
 
                 self.stack[self.sp as usize] = 0xBEEF;
                 self.sp -= 1;
@@ -181,19 +195,67 @@ impl Cpu {
             // TODO implement later
             // DBC1 opcode not handled
 
-            // Dxyn - DRW Vx, Vy, nibble
-            // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
 
-            // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen. If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0. If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen. See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
+            0xD000 ..= 0xDFFF => {
+                // Dxyn
+                // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
+                // Each row of 8 pixels is read as bit-coded starting from memory location I; I value doesn’t change after the execution of this instruction.
+                // As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that doesn’t happen
+
+
+                // Dxyn - DRW Vx, Vy, nibble
+                // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
+
+                // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen.
+                // If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
+                // If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen.
+                // See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
+
+                let start_x = self.v[((opcode & 0x0F00) >> 8) as usize] as usize;
+                let start_y = self.v[((opcode & 0x00F0) >> 4) as usize] as usize;
+                let height = (opcode & 0x000F) as usize;
+
+                let mut pixel_changed = false;
+                let mut current_loc = self.i;
+                // println!("height: {} start_x: {} start_y: {} ", height, start_x, start_y);
+                for row in 0..height {
+                    let width = 64;
+                    let pixel_data :u8 = self.memory[current_loc as usize];
+                    for x in (0..8).rev() {
+                        let bit_value: bool = (pixel_data & (1 << (7 - x))) != 0;
+                        let pixel_to_change = (width * (row + start_y) + x + start_x) as usize;
+
+                        // println!("x: {} row: {} pixel_to_change: {} bit_value: {}", x, row, pixel_to_change, bit_value);
+                        if self.display[pixel_to_change] != bit_value {
+                            pixel_changed = true;
+                        }
+
+                        self.display[pixel_to_change] = bit_value;
+                    }
+                    current_loc += 1;
+                }
+
+                if pixel_changed == true {
+                    self.v[0xF] = 1;
+                } else {
+                    self.v[0xF] = 0;
+                }
+                self.pc += 2;
+            }
 
             _ => {
-                println!("{:X} opcode not handled", opcode);
-                self.pc += 2
+                //println!("{:X} opcode not handled", opcode);
+                self.pc += 2;
+
+                let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode).to_string() };
+                return Err(error);
             }
         }
 
 
-        // TODO Update timers
+        // TODO Update timers - should happen at start, since an unhandled opcode won't get here
+
+        Ok(())
     }
 
 
@@ -237,7 +299,6 @@ fn extract_address_from_opcode(opcode: u16) -> u16 {
 #[cfg(test)]
 mod tests {
     use super::*;
-
 
     #[test]
     fn it_extracts_an_address_from_an_opcode() {

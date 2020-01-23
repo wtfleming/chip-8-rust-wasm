@@ -3,7 +3,7 @@ use std::io;
 use std::io::prelude::*;
 use std::fs::File;
 
-use chip_8_rust::cpu::Cpu;
+use chip_8_lib::cpu::Cpu;
 
 fn main() {
     println!("Starting CPU");
@@ -11,13 +11,13 @@ fn main() {
     let mut cpu = Cpu::new();
     cpu.initialize();
 
-    let data = load_game("c8games/PONG2").unwrap();
+    let data = load_game("../c8games/PONG2").unwrap();
     cpu.load_game(data);
 //    cpu.load_game("c8games/PONG2");
 
     loop {
         // Emulate one cycle
-        cpu.emulate_cycle();
+        cpu.emulate_cycle().unwrap();
 
         // If the draw flag is set, update the screen
         // if(cpu.drawFlag) {
