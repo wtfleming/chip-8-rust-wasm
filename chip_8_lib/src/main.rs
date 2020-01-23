@@ -11,9 +11,10 @@ fn main() {
     let mut cpu = Cpu::new();
     cpu.initialize();
 
-    let data = load_game("../c8games/PONG2").unwrap();
+    // let data = load_game("../c8games/PONG2").unwrap();
+    let data = load_game("./c8games/PONG2").unwrap();
     cpu.load_game(data);
-//    cpu.load_game("c8games/PONG2");
+    //    cpu.load_game("c8games/PONG2");
 
     loop {
         // Emulate one cycle
@@ -30,7 +31,6 @@ fn main() {
 
         //break;
     }
-    
 }
 
 
