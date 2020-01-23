@@ -81,7 +81,7 @@ pub fn update_ui() {
         }
 
         let output = registers.join("<br />");
-        registers_element.set_inner_html(format!("{}", output).as_str());
+        registers_element.set_inner_html(&output);
     }
 
 
@@ -103,7 +103,7 @@ pub fn update_ui() {
             memory_vals.push(format!("<li>0x{:X} - {}</li>", x, disassembler::disassemble(opcode)));
         }
         let output = memory_vals.join("");
-        memory_element.set_inner_html(format!("{}", output).as_str());
+        memory_element.set_inner_html(&output);
     }
 
     let misc_element = document.get_element_by_id("misc").unwrap();

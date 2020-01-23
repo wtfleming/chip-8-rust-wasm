@@ -43,7 +43,7 @@ fn load_game(file_name: &str) -> io::Result<Vec<u8>> {
     //    let mut buffer = [0; 4096];
 
     let mut buffer: Vec<u8> = vec![0; file_metadata.len() as usize];
-    f.read(&mut buffer)?;
+    f.read_exact(&mut buffer)?;
 
     // for (i, item) in buffer.iter().enumerate() {
     //     println!("{} {}", i, item);

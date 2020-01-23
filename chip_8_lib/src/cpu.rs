@@ -83,6 +83,19 @@ pub struct Cpu {
 }
 
 
+impl Default for Cpu {
+    fn default() -> Self {
+        Cpu { memory: [0; 4096],
+              pc: 0x200,  // Program counter starts at memory index 512 (0x200 in hex)
+              v: [0; 16],
+              i: 0,
+              stack: [0; 16],
+              sp: 0,
+              display: [false; 2048],
+        }
+    }
+}
+
 impl Cpu {
     pub fn new() -> Cpu {
         Cpu { memory: [0; 4096],
@@ -234,7 +247,7 @@ impl Cpu {
                     current_loc += 1;
                 }
 
-                if pixel_changed == true {
+                if pixel_changed {
                     self.v[0xF] = 1;
                 } else {
                     self.v[0xF] = 0;
@@ -246,7 +259,7 @@ impl Cpu {
                 //println!("{:X} opcode not handled", opcode);
                 self.pc += 2;
 
-                let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode).to_string() };
+                let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
                 return Err(error);
             }
         }
