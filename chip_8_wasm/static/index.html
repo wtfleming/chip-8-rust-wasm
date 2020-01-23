@@ -15,6 +15,13 @@
 
      body {
        background: #eaeaea;
+       font-family: 'VT323', monospace;
+       font-size: 20px;
+
+     }
+
+     .content {
+       background: #eaeaea;
        width: 512px;
        display: grid;
        grid-template-columns: 50% 25% 25%;
@@ -28,6 +35,7 @@
      header {
        grid-column: 1 / span 3;
        display: flex;
+       font-family: 'Roboto Slab', serif;
      }
 
      .controls {
@@ -40,8 +48,6 @@
      .registers,
      .misc,
      .memory {
-       font-family: 'VT323', monospace;
-       font-size: 20px;
        display: flex;
      }
 
@@ -55,50 +61,61 @@
        background-color: #FFE4B5;
      }
 
+     .github {
+       float: right;
+     }
+
     </style>
   </head>
 
   <body>
-    <header>
-      <div class="info">
-        <h2>CHIP-8</h2>
-        <p>A WebAssembly <a href="https://en.wikipedia.org/wiki/CHIP-8">CHIP-8</a> emulator implemented in Rust.</p>
+    <div class="github">
+      <a href="https://github.com/wtfleming/chip-8-rust"><img width="149" height="149" src="https://github.blog/wp-content/uploads/2008/12/forkme_right_darkblue_121621.png?resize=149%2C149" class="attachment-full size-full" alt="Fork me on GitHub" data-recalc-dims="1"></a>
+    </div>
+
+    <div class="content">
+      <header>
+        <div class="info">
+          <h2>CHIP-8</h2>
+          <p>A WebAssembly <a href="https://en.wikipedia.org/wiki/CHIP-8">CHIP-8</a> emulator implemented in Rust.</p>
+        </div>
+      </header>
+
+
+      <div class="screen">
+        <canvas id="chip8-canvas" width="64" height="32" style="transform: scale(8); transform-origin: top left"></canvas>
+        <!-- <canvas id="chip8-canvas" width="64" height="32"></canvas> -->
       </div>
-    </header>
 
-
-    <div class="screen">
-      <canvas id="chip8-canvas" width="64" height="32" style="transform: scale(8); transform-origin: top left"></canvas>
-      <!-- <canvas id="chip8-canvas" width="64" height="32"></canvas> -->
-    </div>
-
-    <div class="controls">
-      <button id="start-button">Start</button>
-      <button id="stop-button" disabled>Stop</button>
-      <button id="reset-button" disabled>Reset</button>
-      <button id="step-button">Step</button>
-    </div>
-
-
-    <div>
-      <p>Memory</p>
-      <div class="memory">
-
-        <ul class="memorylist" id="memorylist"></ul>
+      <div class="controls">
+        <button id="start-button">Start</button>
+        <button id="stop-button" disabled>Stop</button>
+        <button id="reset-button" disabled>Reset</button>
+        <button id="step-button">Step</button>
       </div>
-    </div>
-    <div>
-      <p>Registers</p>
-      <div class="registers" id="registers"></div>
+
+
+      <div>
+        <p>Memory</p>
+        <div class="memory">
+
+          <ul class="memorylist" id="memorylist"></ul>
+        </div>
+      </div>
+      <div>
+        <p>Registers</p>
+        <div class="registers" id="registers"></div>
+
+      </div>
+      <div>
+        <p>Info</p>
+        <div class="misc" id="misc">
+          PC: 0<br />
+          I: 0
+        </div>
+      </div>
 
     </div>
-    <div>
-      <p>Info</p>
-    <div class="misc" id="misc">
-      PC: 0<br />
-      I: 0
-    </div>
-      </div>
 
     <script src="index.js"></script>
   </body>
