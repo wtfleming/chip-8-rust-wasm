@@ -1,8 +1,3 @@
-#[derive(Debug)]
-pub struct UnknownOpcodeError {
-    pub message: String,
-}
-
 pub fn disassemble(opcode: u16) -> String {
     match opcode {
         0x00EE => {
