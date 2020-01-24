@@ -56,6 +56,22 @@ pub fn disassemble(opcode: u16) -> String {
             let nibble = opcode & 0x000F;
             format!("DRW V{} V{} {} ", x, y, nibble)
         }
+
+        0xF000 ..= 0xFFFF => {
+            let x = (opcode & 0x0F00) >> 8;
+            let code = opcode & 0x00FF;
+            match code {
+                0x33 => {
+                    // Fx33 - LD B, Vx
+                    // Store BCD representation of Vx in memory locations I, I+1, and I+2.
+                    format!("LD B V{}", x)
+                }
+                _ => {
+                    format!("??? {:X}", opcode)
+                }
+            }
+        }
+
         _ => format!("??? {:X}", opcode)
     }
 }

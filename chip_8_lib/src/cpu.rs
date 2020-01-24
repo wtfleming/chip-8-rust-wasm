@@ -161,7 +161,7 @@ impl Cpu {
                 // then the program counter is then set to nnn.
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc;
-                self.pc = extract_address_from_opcode(opcode);
+                self.pc = opcode & 0x0FFF;
 
                 // TODO better error handling if there was a stack overflow?
                 println!("call subroutine at {:X}", opcode);
@@ -257,15 +257,33 @@ impl Cpu {
                 self.pc += 2;
             }
 
-            _ => {
-                //println!("{:X} opcode not handled", opcode);
+            0xF000 ..= 0xFFFF => {
+                let x = ((opcode & 0x0F00) >> 8) as usize;
+                let code = opcode & 0x00FF;
+                match code {
+                    0x33 => {
+                        // Fx33 - LD B, Vx
+                        // Store BCD representation of Vx in memory locations I, I+1, and I+2.
+                        self.memory[self.i as usize] = (self.v[x] / 100) as u8;
+                        self.memory[(self.i + 1) as usize] = (self.v[x] / 10) as u8 % 10;
+                        self.memory[(self.i + 2) as usize] = (self.v[x] % 100) as u8 % 10;
+                    }
+                    _ => {
+                        self.pc += 2;
+                        let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
+                        return Err(error);
+                    }
+                }
                 self.pc += 2;
+            }
 
+
+            _ => {
+                self.pc += 2;
                 let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
                 return Err(error);
             }
         }
-
 
         // TODO Update timers - should happen at start, since an unhandled opcode won't get here
 
@@ -305,18 +323,18 @@ impl Cpu {
 
 }
 
-fn extract_address_from_opcode(opcode: u16) -> u16 {
-    // We only want the last 12 bits, we can use a bitwise AND to extract them
-    opcode & 0x0FFF
-}
+// fn extract_address_from_opcode(opcode: u16) -> u16 {
+//     // We only want the last 12 bits, we can use a bitwise AND to extract them
+//     opcode & 0x0FFF
+// }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    #[test]
-    fn it_extracts_an_address_from_an_opcode() {
-        assert_eq!(extract_address_from_opcode(0x22F6), 0x02F6);
-        assert_eq!(extract_address_from_opcode(0x22F6), 758);
-    }
-}
+//     #[test]
+//     fn it_extracts_an_address_from_an_opcode() {
+//         assert_eq!(extract_address_from_opcode(0x22F6), 0x02F6);
+//         assert_eq!(extract_address_from_opcode(0x22F6), 758);
+//     }
+// }
