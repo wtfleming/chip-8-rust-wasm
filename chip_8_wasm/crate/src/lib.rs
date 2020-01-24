@@ -49,23 +49,6 @@ static mut CPU: Cpu = Cpu {
 };
 
 
-
-// TODO
-// CPU 500Hz
-// Timers count down at 60hz
-
-
-#[wasm_bindgen(module = "/foobaz.js")]
-extern "C" {
-    fn notify_loaded();
-}
-
-// #[wasm_bindgen(module = "/js/foobaz.js")]
-// extern "C" {
-//     fn notify_loaded();
-// }
-
-
 #[wasm_bindgen]
 pub fn update_ui() {
     let window = web_sys::window().expect("no global `window` exists");
