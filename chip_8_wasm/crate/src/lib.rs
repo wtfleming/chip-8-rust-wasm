@@ -28,10 +28,6 @@ pub fn main_js() -> Result<(), JsValue> {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-
-
-    console::log_1(&JsValue::from_str("Hello world!"));
-
     Ok(())
 }
 
@@ -45,7 +41,7 @@ static mut CPU: Cpu = Cpu {
     i: 0,
     stack: [0; 16],
     sp: 0,
-    display: [false; 2048],
+    display: [0; 2048],
 };
 
 
@@ -99,6 +95,8 @@ pub fn update_ui() {
 #[wasm_bindgen]
 pub fn emulate_cycle() {
 
+    // TODO - if an error return the error string and let javascript stop the emulator?
+    
     // This should be getting called at about 60hz, so emulate 10 cycles, and decrement the timer by 1
     // TODO should emulate 10 cycles to get close to 500hz?
 
@@ -160,12 +158,11 @@ pub fn draw_canvas(
     let width = 64;
     let height = 32;
 
-    //let mut data = Vec::new();
-    let mut data = Vec::with_capacity(64 * 32);
+    let mut data = Vec::with_capacity((width * height) as usize);
 
     unsafe {
         for x in CPU.display.iter() {
-            if x == &true {
+            if x == &1 {
                 data.push(240); // red
                 data.push(246); // green
                 data.push(240); // blue

@@ -77,11 +77,12 @@ pub struct Cpu {
 
     // The stack is an array of 16 16-bit values
     pub stack: [u16; 16],
+
     // Stack pointer
     pub sp: u8,
 
     // 64x32 pixels
-    pub display: [bool; SCREEN_WIDTH * SCREEN_HEIGHT],
+    pub display: [u8; SCREEN_WIDTH * SCREEN_HEIGHT],
 }
 
 impl Default for Cpu {
@@ -98,10 +99,11 @@ impl Cpu {
               i: 0,
               stack: [0; 16],
               sp: 0,
-              display: [false; 2048],
+              display: [0; SCREEN_WIDTH * SCREEN_HEIGHT],
         }
     }
 
+    // TODO can remove this fn?     
     pub fn initialize(&mut self) {
         println!("initialize()");
 
@@ -182,9 +184,11 @@ impl Cpu {
             0x7000 ..= 0x7FFF => {
                 // 7xkk - ADD Vx, byte
                 // Set Vx = Vx + kk.
-                let x = (opcode & 0x0F00) >> 8;
-                let kk = opcode & 0x00FF;
-                self.v[x as usize] += kk as u8;
+                let x = ((opcode & 0x0F00) >> 8) as usize;
+                let kk = (opcode & 0x00FF) as u8;
+
+                let (value, _) = self.v[x].overflowing_add(kk);
+                self.v[x as usize] = value;
                 self.pc += 2;
             },
 
@@ -198,54 +202,35 @@ impl Cpu {
                 self.pc += 2;
             },
 
-            // TODO implement later
-            // DBC1 opcode not handled
-
-
             0xD000 ..= 0xDFFF => {
-                // Dxyn
-                // Draws a sprite at coordinate (VX, VY) that has a width of 8 pixels and a height of N pixels.
-                // Each row of 8 pixels is read as bit-coded starting from memory location I; I value doesn’t change after the execution of this instruction.
-                // As described above, VF is set to 1 if any screen pixels are flipped from set to unset when the sprite is drawn, and to 0 if that doesn’t happen
+                let start_x: usize = self.v[((opcode & 0x0F00) >> 8) as usize] as usize;
+                let start_y: usize = self.v[((opcode & 0x00F0) >> 4) as usize] as usize;
+                let height: usize = (opcode & 0x000F) as usize;
 
+                self.v[0xF] = 0;
 
-                // Dxyn - DRW Vx, Vy, nibble
-                // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-
-                // The interpreter reads n bytes from memory, starting at the address stored in I. These bytes are then displayed as sprites on screen at coordinates (Vx, Vy). Sprites are XORed onto the existing screen.
-                // If this causes any pixels to be erased, VF is set to 1, otherwise it is set to 0.
-                // If the sprite is positioned so part of it is outside the coordinates of the display, it wraps around to the opposite side of the screen.
-                // See instruction 8xy3 for more information on XOR, and section 2.4, Display, for more information on the Chip-8 screen and sprites.
-
-                let start_x = self.v[((opcode & 0x0F00) >> 8) as usize] as usize;
-                let start_y = self.v[((opcode & 0x00F0) >> 4) as usize] as usize;
-                let height = (opcode & 0x000F) as usize;
-
-                let mut pixel_changed = false;
                 let mut current_loc = self.i;
-                // println!("height: {} start_x: {} start_y: {} ", height, start_x, start_y);
                 for row in 0..height {
-                    let width = SCREEN_WIDTH;
+                    let width = SCREEN_WIDTH as usize;
                     let pixel_data :u8 = self.memory[current_loc as usize];
                     for x in (0..8).rev() {
-                        let bit_value: bool = (pixel_data & (1 << (7 - x))) != 0;
+
                         let pixel_to_change = (width * (row + start_y) + x + start_x) as usize;
+                        let new_value: u8 = pixel_data & (1 << (7 - x));
+                        let new_value = new_value >> (7 - x); // TODO this logic could probably be cleaned up
 
-                        // println!("x: {} row: {} pixel_to_change: {} bit_value: {}", x, row, pixel_to_change, bit_value);
-                        if self.display[pixel_to_change] != bit_value {
-                            pixel_changed = true;
+                        if new_value == 1 {
+                            let old_value: bool = self.display[pixel_to_change] == 1;
+                            if old_value {
+                                self.v[0xF] = 1;
+                            }
+
+                            self.display[pixel_to_change] = ((new_value == 1) ^ old_value) as u8;
                         }
-
-                        self.display[pixel_to_change] = bit_value;
                     }
                     current_loc += 1;
                 }
 
-                if pixel_changed {
-                    self.v[0xF] = 1;
-                } else {
-                    self.v[0xF] = 0;
-                }
                 self.pc += 2;
             }
 
@@ -277,7 +262,7 @@ impl Cpu {
             }
         }
 
-        // TODO Update timers - should happen at start, since an unhandled opcode won't get here
+        // TODO Update timers - should happen at start, since an unhandled opcode won't get here    
 
         Ok(())
     }
@@ -308,25 +293,61 @@ impl Cpu {
 
         let code1: u16 = self.memory[self.pc as usize] as u16;
         let code2: u16 = self.memory[(self.pc + 1) as usize] as u16;
-        // let opcode: u16 = code1 << 8 | code2;
-        // opcode
         code1 << 8 | code2
     }
 
 }
 
-// fn extract_address_from_opcode(opcode: u16) -> u16 {
-//     // We only want the last 12 bits, we can use a bitwise AND to extract them
-//     opcode & 0x0FFF
-// }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+
+    #[test]
+    fn addition_overflows() {
+        let mut cpu = Cpu::new();
+        cpu.v[0] = 255;
+        cpu.memory[0x200] = 0x70 as u8;
+        cpu.memory[0x201] = 0x02;
+
+        cpu.emulate_cycle().unwrap();
+        assert_eq!(cpu.v[0], 1);
+    }
+
 
 //     #[test]
-//     fn it_extracts_an_address_from_an_opcode() {
-//         assert_eq!(extract_address_from_opcode(0x22F6), 0x02F6);
-//         assert_eq!(extract_address_from_opcode(0x22F6), 758);
+//     fn it_draws_a_sprite() {
+//         let mut cpu = Cpu::new();
+//         cpu.v[11] = 32;
+//         cpu.v[12] = 0;
+//         cpu.i = 746;
+
+//         // DRW V11 V12 1
+//         cpu.memory[0x2FC] = 0xDB as u8;
+//         cpu.memory[0x2FD] = 0xC1 as u8;
+
+//         cpu.pc = 0x2FC;
+
+//         assert_eq!(cpu.display[32], 0);
+//         assert_eq!(cpu.pc, 764);
+
+
+//         // let s = String::from_utf8(cpu.display.to_vec()).expect("Found invalid UTF-8");
+//         // println!("aaaa");
+//         // println!("{}", s);
+
+// //        println!("{:?}", cpu.display.to_vec());
+
+
+//         cpu.emulate_cycle().unwrap();
+// //        println!("{:?}", cpu.display.to_vec());
+
+//         assert_eq!(cpu.display[31], 0);
+//         assert_eq!(cpu.display[32], 1);
+//         assert_eq!(cpu.display[32], 0);
+//         assert_eq!(cpu.pc, 766);
+// //        cpu.emulate_cycle().unwrap();
+// //                        println!("{}", cpu.display[31]);
 //     }
-// }
+}
