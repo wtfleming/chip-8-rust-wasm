@@ -84,17 +84,9 @@ pub struct Cpu {
     pub display: [bool; SCREEN_WIDTH * SCREEN_HEIGHT],
 }
 
-
 impl Default for Cpu {
     fn default() -> Self {
-        Cpu { memory: [0; 4096],
-              pc: 0x200,  // Program counter starts at memory index 512 (0x200 in hex)
-              v: [0; 16],
-              i: 0,
-              stack: [0; 16],
-              sp: 0,
-              display: [false; 2048],
-        }
+        Cpu::new()
     }
 }
 
