@@ -47,6 +47,8 @@
 
 // In modern CHIP-8 implementations, where the interpreter is running natively outside the 4K memory space, there is no need to avoid the lower 512 bytes of memory (0x000-0x200), and it is common to store font data there.
 
+const SCREEN_WIDTH: usize = 64;
+const SCREEN_HEIGHT: usize = 32;
 
 #[derive(Debug)]
 pub struct EmulateCycleError {
@@ -79,7 +81,7 @@ pub struct Cpu {
     pub sp: u8,
 
     // 64x32 pixels
-    pub display: [bool; 2048],
+    pub display: [bool; SCREEN_WIDTH * SCREEN_HEIGHT],
 }
 
 
@@ -231,7 +233,7 @@ impl Cpu {
                 let mut current_loc = self.i;
                 // println!("height: {} start_x: {} start_y: {} ", height, start_x, start_y);
                 for row in 0..height {
-                    let width = 64;
+                    let width = SCREEN_WIDTH;
                     let pixel_data :u8 = self.memory[current_loc as usize];
                     for x in (0..8).rev() {
                         let bit_value: bool = (pixel_data & (1 << (7 - x))) != 0;
