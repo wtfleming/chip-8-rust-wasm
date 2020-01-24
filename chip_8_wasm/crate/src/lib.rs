@@ -54,20 +54,6 @@ pub fn update_ui() {
     let window = web_sys::window().expect("no global `window` exists");
     let document: web_sys::Document  = window.document().expect("should have a document on window");
 
-
-    let registers_element = document.get_element_by_id("registers").unwrap();
-    unsafe {
-        let mut registers: Vec<String> = vec![];
-
-        for (idx, e) in CPU.v.iter().enumerate() {
-            registers.push(format!("v{}: {}", idx.to_string(), e.to_string()));
-        }
-
-        let output = registers.join("<br />");
-        registers_element.set_inner_html(&output);
-    }
-
-
     let memory_element = document.get_element_by_id("memorylist").unwrap();
     unsafe {
         let memory_start = CPU.pc;
@@ -89,9 +75,22 @@ pub fn update_ui() {
         memory_element.set_inner_html(&output);
     }
 
+    let registers_element = document.get_element_by_id("registers").unwrap();
+    unsafe {
+        let mut registers: Vec<String> = vec![];
+
+        for (idx, e) in CPU.v.iter().enumerate() {
+            registers.push(format!("v{}: {}", idx.to_string(), e.to_string()));
+        }
+        registers.push(format!("I: {}", CPU.i));
+
+        let output = registers.join("<br />");
+        registers_element.set_inner_html(&output);
+    }
+
     let misc_element = document.get_element_by_id("misc").unwrap();
     unsafe {
-        misc_element.set_inner_html(format!("PC: {} - 0x{:X} <br /> I: {}", CPU.pc, CPU.pc, CPU.i).as_str());
+        misc_element.set_inner_html(format!("PC: {} - 0x{:X} <br />", CPU.pc, CPU.pc).as_str());
     }
 
 }

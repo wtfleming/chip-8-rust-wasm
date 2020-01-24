@@ -1,5 +1,9 @@
 pub fn disassemble(opcode: u16) -> String {
     match opcode {
+        0x0 => {
+            // Unused memory
+            String::from("")
+        }
         0x00EE => {
             // 00EE - RET
             // Return from a subroutine.
