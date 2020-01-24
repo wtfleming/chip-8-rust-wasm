@@ -35,9 +35,9 @@ pub fn main_js() -> Result<(), JsValue> {
     Ok(())
 }
 
-
-// Only valid because we are using this in a WebAssembly
-// context without threads.
+// TODO find a better way to init this with default values
+// ie. can Cpu::new() be a const_fn?
+// https://doc.rust-lang.org/unstable-book/language-features/const-fn.html
 static mut CPU: Cpu = Cpu {
     memory: [0; 4096],
     pc: 0x200,  // Program counter starts at memory index 512 (0x200 in hex)
