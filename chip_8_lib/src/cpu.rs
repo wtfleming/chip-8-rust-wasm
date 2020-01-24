@@ -83,6 +83,9 @@ pub struct Cpu {
 
     // 64x32 pixels
     pub display: [u8; SCREEN_WIDTH * SCREEN_HEIGHT],
+
+    // Delay timer
+    pub dt: u8,
 }
 
 impl Default for Cpu {
@@ -91,22 +94,51 @@ impl Default for Cpu {
     }
 }
 
+
+pub const CHIP8_FONT_SET: [u8; 80] = [
+  0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
+  0x20, 0x60, 0x20, 0x20, 0x70, // 1
+  0xF0, 0x10, 0xF0, 0x80, 0xF0, // 2
+  0xF0, 0x10, 0xF0, 0x10, 0xF0, // 3
+  0x90, 0x90, 0xF0, 0x10, 0x10, // 4
+  0xF0, 0x80, 0xF0, 0x10, 0xF0, // 5
+  0xF0, 0x80, 0xF0, 0x90, 0xF0, // 6
+  0xF0, 0x10, 0x20, 0x40, 0x40, // 7
+  0xF0, 0x90, 0xF0, 0x90, 0xF0, // 8
+  0xF0, 0x90, 0xF0, 0x10, 0xF0, // 9
+  0xF0, 0x90, 0xF0, 0x90, 0x90, // A
+  0xE0, 0x90, 0xE0, 0x90, 0xE0, // B
+  0xF0, 0x80, 0x80, 0x80, 0xF0, // C
+  0xE0, 0x90, 0x90, 0x90, 0xE0, // D
+  0xF0, 0x80, 0xF0, 0x80, 0xF0, // E
+  0xF0, 0x80, 0xF0, 0x80, 0x80  // F
+];
+
 impl Cpu {
     pub fn new() -> Cpu {
-        Cpu { memory: [0; 4096],
-              pc: 0x200,  // Program counter starts at memory index 512 (0x200 in hex)
-              v: [0; 16],
-              i: 0,
-              stack: [0; 16],
-              sp: 0,
-              display: [0; SCREEN_WIDTH * SCREEN_HEIGHT],
+        let mut cpu = Cpu {
+            memory: [0; 4096],
+            pc: 0x200,  // Program counter starts at memory index 512 (0x200 in hex)
+            v: [0; 16],
+            i: 0,
+            stack: [0; 16],
+            sp: 0,
+            display: [0; SCREEN_WIDTH * SCREEN_HEIGHT],
+            dt: 0,
+        };
+
+        for i in 0..80 {
+            cpu.memory[i] = CHIP8_FONT_SET[i];
         }
+        cpu
     }
 
-    // TODO can remove this fn?     
     pub fn initialize(&mut self) {
         println!("initialize()");
 
+        for i in 0..80 {
+            self.memory[i] = CHIP8_FONT_SET[i];
+        }
         // Initialize registers and memory once
     }
 
@@ -202,6 +234,22 @@ impl Cpu {
                 self.pc += 2;
             },
 
+            0xC000..=0xCFFF => {
+                // Cxkk - RND Vx, byte
+                // Set Vx = random byte AND kk.
+                // The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. The results are stored in Vx. See instruction 8xy2 for more information on AND.
+                let x = (opcode & 0x0F00) >> 8;
+                let kk = (opcode & 0x00FF) as u8;
+
+                let mut buf = [0u8; 1];
+                getrandom::getrandom(&mut buf).unwrap();
+                let random = buf[0];
+
+                self.v[x as usize] = random & kk;
+
+                self.pc += 2;
+            }
+
             0xD000 ..= 0xDFFF => {
                 let start_x: usize = self.v[((opcode & 0x0F00) >> 8) as usize] as usize;
                 let start_y: usize = self.v[((opcode & 0x00F0) >> 4) as usize] as usize;
@@ -233,17 +281,58 @@ impl Cpu {
 
                 self.pc += 2;
             }
-
+            0xE000 ..= 0xEFFF => {
+                let x = (opcode & 0x0F00) >> 8;
+                let code = opcode & 0x00FF;
+                match code {
+                    // 0xA1 => {
+                    //     // ExA1 - SKNP Vx
+                    //     // Skip next instruction if key with the value of Vx is not pressed.
+                    //     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position;
+                    //     //format!("SKNP V{}", x)
+                    // }
+                    _ => {
+                        self.pc += 2;
+                        let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
+                        return Err(error);
+                    }
+                }
+            }
             0xF000 ..= 0xFFFF => {
                 let x = ((opcode & 0x0F00) >> 8) as usize;
                 let code = opcode & 0x00FF;
                 match code {
+                    0x07 => {
+                    // Fx07 - LD Vx, DT
+                    // Set Vx = delay timer value.
+                    self.v[x] = self.dt;
+                    }
+
+                    0x15 => {
+                        // Fx15 - LD DT, Vx
+                        // Set delay timer = Vx.
+                        self.dt = self.v[x];
+                    }
+
                     0x33 => {
                         // Fx33 - LD B, Vx
                         // Store BCD representation of Vx in memory locations I, I+1, and I+2.
                         self.memory[self.i as usize] = (self.v[x] / 100) as u8;
                         self.memory[(self.i + 1) as usize] = (self.v[x] / 10) as u8 % 10;
                         self.memory[(self.i + 2) as usize] = (self.v[x] % 100) as u8 % 10;
+                    }
+                    0x29 => {
+                        // Fx29 - LD F, Vx
+                        // Set I = location of sprite for digit Vx.
+                        self.i = self.v[x] as u16;
+                    }
+
+                    0x65 => {
+                        // Fx65 - LD Vx, [I]
+                        // The interpreter reads values from memory starting at location I into registers V0 through Vx.
+                        for offset in 0..=x {
+                            self.v[offset] = self.memory[(self.i + offset as u16) as usize];
+                        }
                     }
                     _ => {
                         self.pc += 2;
@@ -262,7 +351,13 @@ impl Cpu {
             }
         }
 
-        // TODO Update timers - should happen at start, since an unhandled opcode won't get here    
+        // TODO increate the program counter by 2 here instead of in every match block?   
+        //    leave it in the _ error handler match though?
+
+        // Decrease timers
+        if self.dt > 0 {
+            self.dt -= 1;
+        }
 
         Ok(())
     }

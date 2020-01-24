@@ -48,6 +48,16 @@ pub fn disassemble(opcode: u16) -> String {
             // The value of register I is set to nnn.
             format!("LD I {} ", opcode & 0x0FFF)
         }
+
+        0xC000..=0xCFFF => {
+            // Cxkk - RND Vx, byte
+            // Set Vx = random byte AND kk.
+            // The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. The results are stored in Vx. See instruction 8xy2 for more information on AND.
+            let x = (opcode & 0x0F00) >> 8;
+            let kk = opcode & 0x00FF;
+            format!("RND V{}, {} ", x, kk)
+        }
+
         0xD000..=0xDFFF => {
             // Dxyn - DRW Vx, Vy, nibble
             // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
@@ -56,15 +66,49 @@ pub fn disassemble(opcode: u16) -> String {
             let nibble = opcode & 0x000F;
             format!("DRW V{} V{} {} ", x, y, nibble)
         }
-
+        0xE000 ..= 0xEFFF => {
+            let x = (opcode & 0x0F00) >> 8;
+            let code = opcode & 0x00FF;
+            match code {
+                0xA1 => {
+                    // ExA1 - SKNP Vx
+                    // Skip next instruction if key with the value of Vx is not pressed.
+                    // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position;
+                    format!("SKNP V{}", x)
+                }
+                _ => {
+                    format!("??? {:X}", opcode)
+                }
+            }
+        }
         0xF000 ..= 0xFFFF => {
             let x = (opcode & 0x0F00) >> 8;
             let code = opcode & 0x00FF;
             match code {
+                0x07 => {
+                    // Fx07 - LD Vx, DT
+                    // Set Vx = delay timer value.
+                    format!("LD V{}, DT", x)
+                }
+                0x15 => {
+                    // Fx15 - LD DT, Vx
+                    // Set delay timer = Vx.
+                    format!("LD DT V{}", x)
+                }
                 0x33 => {
                     // Fx33 - LD B, Vx
                     // Store BCD representation of Vx in memory locations I, I+1, and I+2.
                     format!("LD B V{}", x)
+                }
+                0x29 => {
+                    // Fx29 - LD F, Vx
+                    // Set I = location of sprite for digit Vx.
+                    format!("LD F V{}", x)
+                }
+                0x65 => {
+                    // Fx65 - LD Vx, [I]
+                    // The interpreter reads values from memory starting at location I into registers V0 through Vx.
+                    format!("LD V{}, [I]", x)
                 }
                 _ => {
                     format!("??? {:X}", opcode)

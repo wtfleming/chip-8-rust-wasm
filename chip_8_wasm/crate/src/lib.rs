@@ -42,8 +42,15 @@ static mut CPU: Cpu = Cpu {
     stack: [0; 16],
     sp: 0,
     display: [0; 2048],
+    dt: 0,
 };
 
+#[wasm_bindgen]
+pub fn init() {
+    unsafe {
+        CPU.initialize();
+    }
+}
 
 #[wasm_bindgen]
 pub fn update_ui() {
@@ -86,63 +93,29 @@ pub fn update_ui() {
 
     let misc_element = document.get_element_by_id("misc").unwrap();
     unsafe {
-        misc_element.set_inner_html(format!("PC: {} - 0x{:X} <br />", CPU.pc, CPU.pc).as_str());
+        misc_element.set_inner_html(format!("PC: {} - 0x{:X} <br />DT: {}", CPU.pc, CPU.pc, CPU.dt).as_str());
     }
 
 }
 
 
 #[wasm_bindgen]
-pub fn emulate_cycle() {
+pub fn emulate_cycle() -> bool {
 
-    // TODO - if an error return the error string and let javascript stop the emulator?
-    
     // This should be getting called at about 60hz, so emulate 10 cycles, and decrement the timer by 1
     // TODO should emulate 10 cycles to get close to 500hz?
 
     // Maybe rename this to tick()?
 
-
     unsafe {
-        //        CPU.emulate_cycle().map_err(|err| err.to_string());
-        //let _foo = CPU.emulate_cycle().map_err(|err| console::error_1(&JsValue::from_str(err.message.as_str())));
-
         match CPU.emulate_cycle() {
-            Ok(_) => (),
-            Err(e) => console::error_1(&JsValue::from_str(e.message.as_str()))
+            Ok(_) => true,
+            Err(e) => {
+                console::error_1(&JsValue::from_str(e.message.as_str()));
+                false
+            }
         }
     }
-
-    
-    // let window = web_sys::window().expect("no global `window` exists");
-    // let document: web_sys::Document  = window.document().expect("should have a document on window");
-
-//    console::log_1(&JsValue::from_str(document.to_str()));
-//    println!("{:?}", document);
-//    let body = document.body().expect("document should have a body");
-
-
-
-
-    // Update registers in UI
-    
-
-    // let val = document.get_element_by_id("calls").unwrap();
-    // unsafe {
-    // //     let string_list = vec!["Foo".to_string(),"Bar".to_string()];
-    // // let joined = string_list.join("-");
-
-    //     let code1: u16 = CPU.memory[CPU.pc as usize] as u16;
-    //     let code2: u16 = CPU.memory[(CPU.pc + 1) as usize] as u16;
-    //     let opcode: u16 = code1 << 8 | code2;
-
-    //     //let code = code1 << 8 | code2;
-    //     val.set_inner_html(format!("{:X} {:X}", CPU.pc, opcode).as_str());
-    // }
-
-    //val.set_inner_html("Hello from Rust!<br/ >hi");
-//    body.append_child(&val).unwrap();
-    //run();
 }
 
 

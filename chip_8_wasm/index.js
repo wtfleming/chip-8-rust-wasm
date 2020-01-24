@@ -6,6 +6,8 @@ let isRunning = false;
 
 import("./crate/pkg/index.js").then(wasm => {
 
+  wasm.init();
+
   loadRom(wasm, 'PONG2')
   //  loadRom(wasm, 'WIPEOFF')
     .then(() => {
@@ -44,17 +46,18 @@ import("./crate/pkg/index.js").then(wasm => {
 }).catch(console.error);
 
 function doStep(wasm) {
-    wasm.emulate_cycle();
+  let result = wasm.emulate_cycle();
+  if (result === true) {
     wasm.draw_canvas(ctx);
     wasm.update_ui();
+  } else {
+    isRunning = false;
+  }
 }
 
 function runLoop(wasm) {
   if (isRunning) {
     doStep(wasm);
-    // window.requestAnimationFrame(() => {
-    //   runLoop(wasm);
-    // });
   }
 
   window.requestAnimationFrame(() => {
@@ -62,16 +65,6 @@ function runLoop(wasm) {
   });
 }
 
-
-// function emulateCycle(wasm) {
-//   wasm.emulate_cycle();
-//   wasm.draw_canvas(ctx);
-//   wasm.update_ui();
-
-//   window.requestAnimationFrame(() => {
-//     emulateCycle(wasm);
-//   });
-// }
 
 
 async function loadRom(wasm, name) {
@@ -83,23 +76,3 @@ async function loadRom(wasm, name) {
 
   wasm.load_game_js(rom);
 }
-
-
-
-
-// Alternative implementation without using Web Workers
-// import("../pkg/index.js").then(wasm => {
-//     const canvas = document.getElementById('raytracer-canvas');
-//     canvas.height = CANVAS_HEIGHT;
-//     canvas.width = CANVAS_WIDTH;
-
-//     const context = canvas.getContext('2d');
-
-//     const button = document.getElementById("raytracer-button");
-//     button.addEventListener('click', () => {
-//         button.disabled = true;
-//         wasm.draw_single_threaded(context, CANVAS_WIDTH, CANVAS_HEIGHT);
-//         button.disabled = false;
-//     });
-
-// }).catch(console.error);
