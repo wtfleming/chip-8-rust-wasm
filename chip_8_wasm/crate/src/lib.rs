@@ -43,6 +43,7 @@ static mut CPU: Cpu = Cpu {
     sp: 0,
     display: [0; 2048],
     dt: 0,
+    keys: [false; 16]
 };
 
 #[wasm_bindgen]
@@ -96,6 +97,22 @@ pub fn update_ui() {
         misc_element.set_inner_html(format!("PC: {} - 0x{:X} <br />DT: {}", CPU.pc, CPU.pc, CPU.dt).as_str());
     }
 
+}
+
+#[wasm_bindgen]
+pub fn key_down(key: f64) {
+    //console::log_1(&JsValue::from_f64(key));
+    unsafe {
+        CPU.keys[key as usize] = true;
+    }
+}
+
+#[wasm_bindgen]
+pub fn key_up(key: f64) {
+    //console::log_1(&JsValue::from_f64(key));  
+    unsafe {
+        CPU.keys[key as usize] = false;
+    }
 }
 
 

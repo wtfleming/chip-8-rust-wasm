@@ -86,6 +86,9 @@ pub struct Cpu {
 
     // Delay timer
     pub dt: u8,
+
+    // Keyboard
+    pub keys: [bool; 16],
 }
 
 impl Default for Cpu {
@@ -125,6 +128,7 @@ impl Cpu {
             sp: 0,
             display: [0; SCREEN_WIDTH * SCREEN_HEIGHT],
             dt: 0,
+            keys: [false; 16]
         };
 
         for i in 0..80 {
@@ -158,6 +162,8 @@ impl Cpu {
         // println!("{:X}", opcode);
 
         let opcode: u16 = self.fetch_current_opcode();
+
+        // TODO only need to get the first number and match on that - rather than ranges    
 
         match opcode {
             0x00EE => {
@@ -224,6 +230,37 @@ impl Cpu {
                 self.pc += 2;
             },
 
+            0x8000..=0x8FFF => {
+                let x = ((opcode & 0x0F00) >> 8) as usize;
+                let y = ((opcode & 0x00F0) >> 4) as usize;
+                let subcode = opcode & 0x000F;
+                match subcode {
+                    2 => {
+                        // 8xy2 - AND Vx, Vy
+                        // Set Vx = Vx AND Vy.
+                        // Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
+                        self.v[x] = self.v[x] & self.v[y];
+                        self.pc += 2;
+                    }
+                    4 => {
+                        // 8xy4 - ADD Vx, Vy
+                        // Set Vx = Vx + Vy, set VF = carry.
+                        // The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
+                        let (value, did_overflow) = self.v[x].overflowing_add(self.v[y]);
+                        if did_overflow {
+                            self.v[0xF] = 1;
+                        }
+                        self.v[x] = value;
+                        self.pc += 2;
+                    }
+                    _ => {
+                        self.pc += 2;
+                        let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
+                        return Err(error);
+                    }
+                }
+            }
+
 
             0xA000 ..= 0xAFFF => {
                 // Annn - LD I, addr
@@ -285,12 +322,16 @@ impl Cpu {
                 let x = (opcode & 0x0F00) >> 8;
                 let code = opcode & 0x00FF;
                 match code {
-                    // 0xA1 => {
-                    //     // ExA1 - SKNP Vx
-                    //     // Skip next instruction if key with the value of Vx is not pressed.
-                    //     // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position;
-                    //     //format!("SKNP V{}", x)
-                    // }
+                    0xA1 => {
+                        // ExA1 - SKNP Vx
+                        // Skip next instruction if key with the value of Vx is not pressed.
+                        // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position;
+                        if !self.keys[self.v[x as usize] as usize] {
+                            self.pc += 4;
+                        } else {
+                            self.pc += 2;
+                        }
+                    }
                     _ => {
                         self.pc += 2;
                         let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
