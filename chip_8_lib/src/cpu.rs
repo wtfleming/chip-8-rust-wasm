@@ -135,19 +135,14 @@ impl Cpu {
             keys: [false; 16]
         };
 
-        for i in 0..80 {
-            cpu.memory[i] = CHIP8_FONT_SET[i];
-        }
+        cpu.memory[..80].clone_from_slice(&CHIP8_FONT_SET[..80]);
         cpu
     }
 
     pub fn initialize(&mut self) {
-        println!("initialize()");
-
-        for i in 0..80 {
-            self.memory[i] = CHIP8_FONT_SET[i];
+        for (i, item) in CHIP8_FONT_SET.iter().enumerate() {
+            self.memory[i] = *item;
         }
-        // Initialize registers and memory once
     }
 
     pub fn load_game(&mut self, data: Vec<u8>) {
@@ -159,15 +154,8 @@ impl Cpu {
         }
     }
 
-
-
-    //    pub fn emulate_cycle(&mut self) -> Result<(), &'static str> {
     pub fn emulate_cycle(&mut self) -> Result<(), EmulateCycleError> {
-        // println!("{:X}", opcode);
-
         let opcode: u16 = self.fetch_current_opcode();
-
-        // TODO only need to get the first number and match on that - rather than ranges    
 
         match opcode {
             0x00EE => {
@@ -262,7 +250,7 @@ impl Cpu {
                         // 8xy2 - AND Vx, Vy
                         // Set Vx = Vx AND Vy.
                         // Performs a bitwise AND on the values of Vx and Vy, then stores the result in Vx.
-                        self.v[x] = self.v[x] & self.v[y];
+                        self.v[x] &= self.v[y];
                         self.pc += 2;
                     }
                     4 => {
@@ -299,7 +287,7 @@ impl Cpu {
             }
 
 
-            0xA000 ..= 0xAFFF => {
+            0xA000..=0xAFFF => {
                 // Annn - LD I, addr
                 // Set I = nnn.
                 // The value of register I is set to nnn.
@@ -363,15 +351,10 @@ impl Cpu {
                 let code = opcode & 0x00FF;
                 match code {
                     0xA1 => {
-                        // let key_idx = self.v[x as usize];   
-//                        let error = EmulateCycleError { message: format!(" {:?}", self.keys) };
-                        // let error = EmulateCycleError { message: format!("V{:X} key code: {:X}  value {}", x, key_idx, self.keys[key_idx as usize]) };
-                        // return Err(error);
-
                         // ExA1 - SKNP Vx
                         // Skip next instruction if key with the value of Vx is not pressed.
                         // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position;
-                        if self.keys[self.v[x as usize] as usize] == false {
+                        if !self.keys[self.v[x as usize] as usize]{
                             self.pc += 4;
                         } else {
                             self.pc += 2;
@@ -388,13 +371,12 @@ impl Cpu {
                 let x = ((opcode & 0x0F00) >> 8) as usize;
                 let code = opcode & 0x00FF;
                 match code {
-
                     0x0A => {
                         // Fx0A - LD Vx, K
                         // Wait for a key press, store the value of the key in Vx.
                         // All execution stops until a key is pressed, then the value of that key is stored in Vx.
                         for (i, key) in self.keys.iter().enumerate() {
-                            if *key == true {
+                            if *key {
                                 self.v[x] = i as u8;
                                 self.pc +=2;
                             }
@@ -405,7 +387,6 @@ impl Cpu {
                     // Set Vx = delay timer value.
                     self.v[x] = self.dt;
                     }
-
                     0x15 => {
                         // Fx15 - LD DT, Vx
                         // Set delay timer = Vx.
@@ -416,7 +397,6 @@ impl Cpu {
                         // Set sound timer = Vx.
                         self.st = self.v[x];
                     }
-
                     0x33 => {
                         // Fx33 - LD B, Vx
                         // Store BCD representation of Vx in memory locations I, I+1, and I+2.
