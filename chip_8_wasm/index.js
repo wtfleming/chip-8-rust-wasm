@@ -9,7 +9,7 @@ import("./crate/pkg/index.js").then(wasm => {
   wasm.init();
 
   loadRom(wasm, 'PONG2')
-  //  loadRom(wasm, 'WIPEOFF')
+//    loadRom(wasm, 'WIPEOFF')
     .then(() => {
       console.log('ROM finished loading');
       runLoop(wasm);
@@ -42,11 +42,22 @@ import("./crate/pkg/index.js").then(wasm => {
   });
 
   document.addEventListener("keydown", event => {
-    wasm.key_down(keyMap[event.keyCode]);
+    let keyCode = keyMap[event.key];
+    if (keyCode >= 0 && keyCode <= 0xf) {
+      wasm.key_down(keyMap[event.key]);
+//      console.log(event);
+    }
+    
+    
+
   });
 
-  document.addEventListener("keydown", event => {
-    wasm.key_up(keyMap[event.keyCode]);
+  document.addEventListener("keyup", event => {
+    let keyCode = keyMap[event.key];
+    if (keyCode >= 0 && keyCode <= 0xf) {
+      wasm.key_up(keyMap[event.key]);
+//      console.log(event);
+    }
   });
 
 
@@ -64,7 +75,10 @@ function doStep(wasm) {
 
 function runLoop(wasm) {
   if (isRunning) {
-    doStep(wasm);
+    // Run 10 steps to emulate a 600hz cpu
+    for (let x = 0; x <= 10; x++) {
+      doStep(wasm);
+    }
   }
 
   window.requestAnimationFrame(() => {
@@ -95,24 +109,50 @@ async function loadRom(wasm, name) {
 // +-+-+-+-+                +-+-+-+-+
 // |A|0|B|F|                |Z|X|C|V|
 // +-+-+-+-+                +-+-+-+-+
+
+
 const keyMap = {
-  49: 0x1, // 1
-  50: 0x2, // 2
-  51: 0x3, // 3
-  52: 0xc, // 4
+  '1': 0x1, // 1
+  '2': 0x2, // 2
+  '3': 0x3, // 3
+  '4': 0xc, // 4
 
-  81: 0x4, // Q
-  87: 0x5, // W
-  69: 0x6, // E
-  82: 0xd, // R
+  'q': 0x4, // Q
+  'w': 0x5, // W
+  'w': 0x6, // E
+  'r': 0xd, // R
 
-  65: 0x7, // A
-  83: 0x8, // S
-  68: 0x9, // D
-  70: 0xe, // F
+  'a': 0x7, // A
+  's': 0x8, // S
+  'd': 0x9, // D
+  'f': 0xe, // F
 
-  90: 0xa, // Z
-  88: 0x0, // X
-  67: 0xb, // C
-  86: 0xf  // V
+  'z': 0xa, // Z
+  'x': 0x0, // X
+  'c': 0xb, // C
+  'v': 0xf,  // V
 };
+
+
+
+// const keyMap = {
+//   49: 0x1, // 1
+//   50: 0x2, // 2
+//   51: 0x3, // 3
+//   52: 0xc, // 4
+
+//   81: 0x4, // Q
+//   87: 0x5, // W
+//   69: 0x6, // E
+//   82: 0xd, // R
+
+//   65: 0x7, // A
+//   83: 0x8, // S
+//   68: 0x9, // D
+//   70: 0xe, // F
+
+//   90: 0xa, // Z
+//   88: 0x0, // X
+//   67: 0xb, // C
+//   86: 0xf  // V
+// };

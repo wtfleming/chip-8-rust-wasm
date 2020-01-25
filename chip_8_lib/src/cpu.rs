@@ -87,6 +87,9 @@ pub struct Cpu {
     // Delay timer
     pub dt: u8,
 
+    // Sound timer
+    pub st: u8,
+
     // Keyboard
     pub keys: [bool; 16],
 }
@@ -128,6 +131,7 @@ impl Cpu {
             sp: 0,
             display: [0; SCREEN_WIDTH * SCREEN_HEIGHT],
             dt: 0,
+            st: 0,
             keys: [false; 16]
         };
 
@@ -211,6 +215,18 @@ impl Cpu {
                     self.pc += 2;
                 }
             },
+            0x4000..=0x4FFF => {
+                // 4xkk - SNE Vx, byte
+                // Skip next instruction if Vx != kk.
+                //The interpreter compares register Vx to kk, and if they are not equal, increments the program counter by 2.
+                let x = (opcode & 0x0F00) >> 8;
+                let kk = opcode & 0x00FF;
+                if self.v[x as usize] != kk as u8 {
+                    self.pc += 4;
+                } else {
+                    self.pc += 2;
+                }
+            }
             0x6000 ..= 0x6FFF => {
                 // 6xkk - LD Vx, byte
                 // The interpreter puts the value kk into register Vx.
@@ -235,6 +251,13 @@ impl Cpu {
                 let y = ((opcode & 0x00F0) >> 4) as usize;
                 let subcode = opcode & 0x000F;
                 match subcode {
+                    0 => {
+                        // 8xy0 - LD Vx, Vy
+                        // Set Vx = Vy.
+                        self.v[x] = self.v[y];
+                        self.pc += 2;
+                    }
+
                     2 => {
                         // 8xy2 - AND Vx, Vy
                         // Set Vx = Vx AND Vy.
@@ -253,6 +276,20 @@ impl Cpu {
                         self.v[x] = value;
                         self.pc += 2;
                     }
+                    5 => {
+                        // 8xy5 - SUB Vx, Vy
+                        // Set Vx = Vx - Vy, set VF = NOT borrow.
+                        // If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
+                        let (value, _did_overflow) = self.v[x].overflowing_sub(self.v[y]);
+                        if self.v[x] > self.v[y] {
+                            self.v[0xF] = 1;
+                        } else {
+                            self.v[0xF] = 0;
+                        }
+                        self.v[x] = value;
+                        self.pc += 2;
+                    }
+
                     _ => {
                         self.pc += 2;
                         let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
@@ -288,6 +325,8 @@ impl Cpu {
             }
 
             0xD000 ..= 0xDFFF => {
+                // Dxyn - DRW Vx, Vy, nibble
+                // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
                 let start_x: usize = self.v[((opcode & 0x0F00) >> 8) as usize] as usize;
                 let start_y: usize = self.v[((opcode & 0x00F0) >> 4) as usize] as usize;
                 let height: usize = (opcode & 0x000F) as usize;
@@ -296,15 +335,16 @@ impl Cpu {
 
                 let mut current_loc = self.i;
                 for row in 0..height {
-                    let width = SCREEN_WIDTH as usize;
                     let pixel_data :u8 = self.memory[current_loc as usize];
                     for x in (0..8).rev() {
-
-                        let pixel_to_change = (width * (row + start_y) + x + start_x) as usize;
                         let new_value: u8 = pixel_data & (1 << (7 - x));
                         let new_value = new_value >> (7 - x); // TODO this logic could probably be cleaned up
 
                         if new_value == 1 {
+                            let xi = (x + start_x) % SCREEN_WIDTH;
+                            let yi = (row + start_y) % SCREEN_HEIGHT;
+                            let pixel_to_change = (xi + yi * SCREEN_WIDTH) as usize;
+
                             let old_value: bool = self.display[pixel_to_change] == 1;
                             if old_value {
                                 self.v[0xF] = 1;
@@ -323,10 +363,15 @@ impl Cpu {
                 let code = opcode & 0x00FF;
                 match code {
                     0xA1 => {
+                        // let key_idx = self.v[x as usize];   
+//                        let error = EmulateCycleError { message: format!(" {:?}", self.keys) };
+                        // let error = EmulateCycleError { message: format!("V{:X} key code: {:X}  value {}", x, key_idx, self.keys[key_idx as usize]) };
+                        // return Err(error);
+
                         // ExA1 - SKNP Vx
                         // Skip next instruction if key with the value of Vx is not pressed.
                         // Checks the keyboard, and if the key corresponding to the value of Vx is currently in the up position;
-                        if !self.keys[self.v[x as usize] as usize] {
+                        if self.keys[self.v[x as usize] as usize] == false {
                             self.pc += 4;
                         } else {
                             self.pc += 2;
@@ -343,6 +388,18 @@ impl Cpu {
                 let x = ((opcode & 0x0F00) >> 8) as usize;
                 let code = opcode & 0x00FF;
                 match code {
+
+                    0x0A => {
+                        // Fx0A - LD Vx, K
+                        // Wait for a key press, store the value of the key in Vx.
+                        // All execution stops until a key is pressed, then the value of that key is stored in Vx.
+                        for (i, key) in self.keys.iter().enumerate() {
+                            if *key == true {
+                                self.v[x] = i as u8;
+                                self.pc +=2;
+                            }
+                        }
+                    }
                     0x07 => {
                     // Fx07 - LD Vx, DT
                     // Set Vx = delay timer value.
@@ -353,6 +410,11 @@ impl Cpu {
                         // Fx15 - LD DT, Vx
                         // Set delay timer = Vx.
                         self.dt = self.v[x];
+                    }
+                    0x18 => {
+                        // Fx18 - LD ST, Vx
+                        // Set sound timer = Vx.
+                        self.st = self.v[x];
                     }
 
                     0x33 => {
@@ -398,6 +460,9 @@ impl Cpu {
         // Decrease timers
         if self.dt > 0 {
             self.dt -= 1;
+        }
+        if self.st > 0 {
+            self.st -= 1;
         }
 
         Ok(())

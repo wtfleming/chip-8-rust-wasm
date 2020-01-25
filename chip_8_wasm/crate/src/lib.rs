@@ -43,6 +43,7 @@ static mut CPU: Cpu = Cpu {
     sp: 0,
     display: [0; 2048],
     dt: 0,
+    st: 0,
     keys: [false; 16]
 };
 
@@ -94,22 +95,22 @@ pub fn update_ui() {
 
     let misc_element = document.get_element_by_id("misc").unwrap();
     unsafe {
-        misc_element.set_inner_html(format!("PC: {} - 0x{:X} <br />DT: {}", CPU.pc, CPU.pc, CPU.dt).as_str());
+        misc_element.set_inner_html(format!("PC: {} - 0x{:X} <br />DT: {}<br /> ST: {}", CPU.pc, CPU.pc, CPU.dt, CPU.st).as_str());
     }
 
 }
 
 #[wasm_bindgen]
-pub fn key_down(key: f64) {
-    //console::log_1(&JsValue::from_f64(key));
+pub fn key_down(key: u8) {
+    // console::log_1(&JsValue::from_f64(key as f64));
+    // console::log_1(&JsValue::from_bool(CPU.keys[key as usize]));
     unsafe {
         CPU.keys[key as usize] = true;
     }
 }
 
 #[wasm_bindgen]
-pub fn key_up(key: f64) {
-    //console::log_1(&JsValue::from_f64(key));  
+pub fn key_up(key: u8) {
     unsafe {
         CPU.keys[key as usize] = false;
     }
@@ -118,12 +119,6 @@ pub fn key_up(key: f64) {
 
 #[wasm_bindgen]
 pub fn emulate_cycle() -> bool {
-
-    // This should be getting called at about 60hz, so emulate 10 cycles, and decrement the timer by 1
-    // TODO should emulate 10 cycles to get close to 500hz?
-
-    // Maybe rename this to tick()?
-
     unsafe {
         match CPU.emulate_cycle() {
             Ok(_) => true,
@@ -140,11 +135,7 @@ pub fn emulate_cycle() -> bool {
 #[wasm_bindgen]
 pub fn draw_canvas(
     ctx: &CanvasRenderingContext2d,
-    // width: u32,
-    // height: u32,
 ) -> Result<(), JsValue> {
-    //console::log_1(&JsValue::from_str("Running!"));
-
     let width = 64;
     let height = 32;
 
@@ -224,6 +215,5 @@ pub fn load_game_js(data: DataView) {
         CPU.load_game(data_vec);
     }
 
-    console::log_1(&data.buffer());
-
+    // console::log_1(&data.buffer());
 }

@@ -29,6 +29,16 @@ pub fn disassemble(opcode: u16) -> String {
             let kk = opcode & 0x00FF;
             format!("SE V{} {} ", x, kk)
         }
+        0x4000..=0x4FFF => {
+            // 4xkk - SNE Vx, byte
+            // Skip next instruction if Vx != kk.
+
+            //The interpreter compares register Vx to kk, and if they are not equal, increments the program counter by 2.
+            let x = (opcode & 0x0F00) >> 8;
+            let kk = opcode & 0x00FF;
+            format!("SNE V{} {} ", x, kk)
+        }
+
         0x6000..=0x6FFF => {
             // 6xkk - LD Vx, byte
             // The interpreter puts the value kk into register Vx.
@@ -49,6 +59,11 @@ pub fn disassemble(opcode: u16) -> String {
             let y = (opcode & 0x00F0) >> 4;
             let subcode = opcode & 0x000F;
             match subcode {
+                0 => {
+                    // 8xy0 - LD Vx, Vy
+                    // Set Vx = Vy.
+                    format!("LD V{} V{} ", x, y)
+                }
                 2 => {
                     // 8xy2 - AND Vx, Vy
                     // Set Vx = Vx AND Vy.
@@ -62,6 +77,18 @@ pub fn disassemble(opcode: u16) -> String {
                     // The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. Only the lowest 8 bits of the result are kept, and stored in Vx.
                     format!("ADD V{} V{} ", x, y)
                 }
+                5 => {
+                    // 8xy5 - SUB Vx, Vy
+                    // Set Vx = Vx - Vy, set VF = NOT borrow.
+                    // If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.
+                    format!("SUB V{} V{} ", x, y)
+                }
+                // 7 => {
+                //     // 8xy7 - SUBN Vx, Vy
+                //     // Set Vx = Vy - Vx, set VF = NOT borrow.
+                //     // If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.
+                //     format!("SUBN V{} V{} ", x, y)
+                // }
                 _ => {
                     format!("??? {:X}", opcode)
                 }
@@ -110,6 +137,12 @@ pub fn disassemble(opcode: u16) -> String {
             let x = (opcode & 0x0F00) >> 8;
             let code = opcode & 0x00FF;
             match code {
+                0x0A => {
+                    // Fx0A - LD Vx, K
+                    // Wait for a key press, store the value of the key in Vx.
+                    // All execution stops until a key is pressed, then the value of that key is stored in Vx.
+                    format!("LD V{} K", x)
+                }
                 0x07 => {
                     // Fx07 - LD Vx, DT
                     // Set Vx = delay timer value.
@@ -119,6 +152,11 @@ pub fn disassemble(opcode: u16) -> String {
                     // Fx15 - LD DT, Vx
                     // Set delay timer = Vx.
                     format!("LD DT V{}", x)
+                }
+                0x18 => {
+                    // Fx18 - LD ST, Vx
+                    // Set sound timer = Vx.
+                    format!("LD ST V{}", x)
                 }
                 0x33 => {
                     // Fx33 - LD B, Vx
