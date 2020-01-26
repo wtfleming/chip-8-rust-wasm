@@ -1,24 +1,27 @@
 pub fn disassemble(opcode: u16) -> String {
     match opcode {
-        0x00E0 => {
-            // 00E0 - CLS
-            //Clear the display.
-            String::from("CLS")
-        }
-        0x00EE => {
-            // 00EE - RET
-            // Return from a subroutine.
-            String::from("RET")
-        }
         0x0000..=0x0FFF => {
-            // Unused memory
-            String::from("")
-
-            // 0nnn - SYS addr
-            // Jump to a machine code routine at nnn.
-            // This instruction is only used on the old computers on which Chip-8 was originally implemented. It is ignored by modern interpreters.
+            let subcode = opcode & 0x00FF;
+            match subcode {
+                0x00E0 => {
+                    // 00E0 - CLS
+                    //Clear the display.
+                    String::from("CLS")
+                }
+                0x00EE => {
+                    // 00EE - RET
+                    // Return from a subroutine.
+                    String::from("RET")
+                }
+                _ => {
+                    // Unused memory
+                    String::from("")
+                    // 0nnn - SYS addr
+                    // Jump to a machine code routine at nnn.
+                    // This instruction is only used on the old computers on which Chip-8 was originally implemented. It is ignored by modern interpreters.
+                }
+            }
         }
-
         0x1000..=0x1FFF => {
             // 1nnn - JP addr
             // Jump to location nnn.
@@ -244,7 +247,5 @@ pub fn disassemble(opcode: u16) -> String {
                 }
             }
         }
-
-        _ => format!("??? {:X}", opcode)
     }
 }

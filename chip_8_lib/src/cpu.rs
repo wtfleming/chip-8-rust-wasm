@@ -1,59 +1,60 @@
-
-// http://www.multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
-// https://en.wikipedia.org/wiki/CHIP-8
-// http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
-// https://blog.scottlogic.com/2017/12/13/chip8-emulator-webassembly-rust.html
-
-
-
-
-
-// CHIP-8 was most commonly implemented on 4K systems, such as the Cosmac VIP and the Telmac 1800. These machines had 4096 (0x1000) memory locations, all of which are 8 bits (a byte) which is where the term CHIP-8 originated. However, the CHIP-8 interpreter itself occupies the first 512 bytes of the memory space on these machines. For this reason, most programs written for the original system begin at memory location 512 (0x200) and do not access any of the memory below the location 512 (0x200). The uppermost 256 bytes (0xF00-0xFFF) are reserved for display refresh, and the 96 bytes below that (0xEA0-0xEFF) were reserved for the call stack, internal use, and other variables.
-
-// In modern CHIP-8 implementations, where the interpreter is running natively outside the 4K memory space, there is no need to avoid the lower 512 bytes of memory (0x000-0x200), and it is common to store font data there.
-
-
-// 35 opcodes   http://en.wikipedia.org/wiki/CHIP-8#Opcode_table
-// CHIP-8 has 35 opcodes, which are all two bytes long and stored big-endian. The opcodes are listed below, in hexadecimal and with the following symbols:
-
-
-// CPU registers: The Chip 8 has 15 8-bit general purpose registers named V0,V1 up to VE. The 16th register is used  for the ‘carry flag’. Eight bits is one byte so we can use an unsigned char for this purpose:
-
-
-
-// There is an Index register I and a program counter (pc) which can have a value from 0x000 to 0xFFF
-
-// The systems memory map:
-// 0x000-0x1FF - Chip 8 interpreter (contains font set in emu)
-// 0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
-// 0x200-0xFFF - Program ROM and work RAM
-
-// The graphics system: The chip 8 has one instruction that draws sprite to the screen. Drawing is done in XOR mode and if a pixel is turned off as a result of drawing, the VF register is set. This is used for collision detection.
-
-// The graphics of the Chip 8 are black and white and the screen has a total of 2048 pixels (64 x 32). This can easily be implemented using an array that hold the pixel state (1 or 0):
-
-// Interupts and hardware registers. The Chip 8 has none, but there are two timer registers that count at 60 Hz. When set above zero they will count down to zero.
-
-// The system’s buzzer sounds whenever the sound timer reaches zero.
-
-// It is important to know that the Chip 8 instruction set has opcodes that allow the program to jump to a certain address or call a subroutine. While the specification don’t mention a stack, you will need to implement one as part of the interpreter yourself. The stack is used to remember the current location before a jump is performed. So anytime you perform a jump or call a subroutine, store the program counter in the stack before proceeding. The system has 16 levels of stack and in order to remember which level of the stack is used, you need to implement a stack pointer (sp).
-
-// Finally, the Chip 8 has a HEX based keypad (0x0-0xF), you can use an array to store the current state of the key.
-
-
-
-// LOADING FILES
-// For this reason, most programs written for the original system begin at memory location 512 (0x200) and do not access any of the memory below the location 512 (0x200). The uppermost 256 bytes (0xF00-0xFFF) are reserved for display refresh, and the 96 bytes below that (0xEA0-0xEFF) were reserved for the call stack, internal use, and other variables.
-
-// In modern CHIP-8 implementations, where the interpreter is running natively outside the 4K memory space, there is no need to avoid the lower 512 bytes of memory (0x000-0x200), and it is common to store font data there.
+use std::error;
+use std::fmt;
 
 const SCREEN_WIDTH: usize = 64;
 const SCREEN_HEIGHT: usize = 32;
 
-#[derive(Debug)]
+//#[derive(Debug)]
 pub struct EmulateCycleError {
     pub message: String,
 }
+
+impl fmt::Display for EmulateCycleError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+impl fmt::Debug for EmulateCycleError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "EmulateCycleError {{ message: {} }}",
+            self.message
+        )
+    }
+}
+
+impl error::Error for EmulateCycleError {
+    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+        // Generic error, underlying cause isn't tracked.
+        None
+    }
+}
+
+
+// #[derive(Debug, Clone)]
+// struct DoubleError;
+
+// // Generation of an error is completely separate from how it is displayed.
+// // There's no need to be concerned about cluttering complex logic with the display style.
+// //
+// // Note that we don't store any extra info about the errors. This means we can't state
+// // which string failed to parse without modifying our types to carry that information.
+// impl fmt::Display for DoubleError {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "invalid first item to double")
+//     }
+// }
+
+// // This is important for other errors to wrap this one.
+// impl error::Error for DoubleError {
+//     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
+//         // Generic error, underlying cause isn't tracked.
+//         None
+//     }
+// }
+
 
 // impl EmulateCycleError {
 //     fn description(&self) -> &str {
@@ -156,7 +157,6 @@ impl Cpu {
 
     pub fn emulate_cycle(&mut self) -> Result<(), EmulateCycleError> {
         let opcode: u16 = self.fetch_current_opcode();
-
         match opcode {
             0x00E0 => {
                 // 00E0 - CLS
@@ -395,7 +395,7 @@ impl Cpu {
                     let pixel_data :u8 = self.memory[current_loc as usize];
                     for x in (0..8).rev() {
                         let new_value: u8 = pixel_data & (1 << (7 - x));
-                        let new_value = new_value >> (7 - x); // TODO this logic could probably be cleaned up
+                        let new_value = new_value >> (7 - x);
 
                         if new_value == 1 {
                             let xi = (x + start_x) % SCREEN_WIDTH;
@@ -412,7 +412,6 @@ impl Cpu {
                     }
                     current_loc += 1;
                 }
-
                 self.pc += 2;
             }
             0xE000 ..= 0xEFFF => {
@@ -450,9 +449,9 @@ impl Cpu {
                 let code = opcode & 0x00FF;
                 match code {
                     0x07 => {
-                    // Fx07 - LD Vx, DT
-                    // Set Vx = delay timer value.
-                    self.v[x] = self.dt;
+                        // Fx07 - LD Vx, DT
+                        // Set Vx = delay timer value.
+                        self.v[x] = self.dt;
                     }
                     0x0A => {
                         // Fx0A - LD Vx, K
