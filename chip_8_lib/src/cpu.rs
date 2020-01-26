@@ -1,66 +1,7 @@
-use std::error;
-use std::fmt;
+use crate::emulate_cycle_error::EmulateCycleError;
 
 const SCREEN_WIDTH: usize = 64;
 const SCREEN_HEIGHT: usize = 32;
-
-//#[derive(Debug)]
-pub struct EmulateCycleError {
-    pub message: String,
-}
-
-impl fmt::Display for EmulateCycleError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl fmt::Debug for EmulateCycleError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "EmulateCycleError {{ message: {} }}",
-            self.message
-        )
-    }
-}
-
-impl error::Error for EmulateCycleError {
-    fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        // Generic error, underlying cause isn't tracked.
-        None
-    }
-}
-
-
-// #[derive(Debug, Clone)]
-// struct DoubleError;
-
-// // Generation of an error is completely separate from how it is displayed.
-// // There's no need to be concerned about cluttering complex logic with the display style.
-// //
-// // Note that we don't store any extra info about the errors. This means we can't state
-// // which string failed to parse without modifying our types to carry that information.
-// impl fmt::Display for DoubleError {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "invalid first item to double")
-//     }
-// }
-
-// // This is important for other errors to wrap this one.
-// impl error::Error for DoubleError {
-//     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-//         // Generic error, underlying cause isn't tracked.
-//         None
-//     }
-// }
-
-
-// impl EmulateCycleError {
-//     fn description(&self) -> &str {
-//         &self.string
-//     }
-// }
 
 
 pub struct Cpu {
