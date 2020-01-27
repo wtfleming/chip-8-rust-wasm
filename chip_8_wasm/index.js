@@ -72,6 +72,9 @@ function runLoop(wasm) {
     // Run 9 steps to emulate a ~540hz cpu
     for (let x = 0; x <= 9; x++) {
       doStep(wasm);
+      if (!isRunning) {
+        return;
+      }
     }
   }
 

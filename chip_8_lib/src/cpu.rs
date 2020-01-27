@@ -76,10 +76,7 @@ impl Cpu {
             st: 0,
             keys: [false; 16]
         };
-// // 0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
-//        cpu.memory[..80].clone_from_slice(&CHIP8_FONT_SET[..80]);
-
-        cpu.memory[0x050..0x0A0].clone_from_slice(&CHIP8_FONT_SET[..80]);
+        cpu.memory[0..80].clone_from_slice(&CHIP8_FONT_SET[..80]);
         cpu
     }
 
@@ -90,9 +87,6 @@ impl Cpu {
     }
 
     pub fn load_game(&mut self, data: Vec<u8>) {
-        println!("load_game()");
-        //println!("load_game() {:?}", data);
-
         for (idx, item) in data.iter().enumerate() {
             self.memory[idx + 512] = *item;
         }
@@ -278,7 +272,7 @@ impl Cpu {
                     }
                     _ => {
                         self.pc += 2;
-                        let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
+                        let error = EmulateCycleError { message: format!("{:X} opcode not handled a", opcode) };
                         return Err(error);
                     }
                 }
@@ -321,40 +315,36 @@ impl Cpu {
                 let random = buf[0];
 
                 self.v[x as usize] = random & kk;
-
                 self.pc += 2;
             }
             0xD000 ..= 0xDFFF => {
                 // Dxyn - DRW Vx, Vy, nibble
                 // Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.
-                let start_x: usize = self.v[((opcode & 0x0F00) >> 8) as usize] as usize;
-                let start_y: usize = self.v[((opcode & 0x00F0) >> 4) as usize] as usize;
+                let x: usize = self.v[((opcode & 0x0F00) >> 8) as usize] as usize;
+                let y: usize = self.v[((opcode & 0x00F0) >> 4) as usize] as usize;
                 let height: usize = (opcode & 0x000F) as usize;
+                let sprite: &[u8] = &self.memory[self.i as usize .. (self.i + height as u16) as usize];
+                let rows = sprite.len();
 
                 self.v[0xF] = 0;
 
-                let mut current_loc = self.i;
-                for row in 0..height {
-                    let pixel_data :u8 = self.memory[current_loc as usize];
-                    for x in (0..8).rev() {
-                        let new_value: u8 = pixel_data & (1 << (7 - x));
-                        let new_value = new_value >> (7 - x);
-
+                for (j, _) in sprite.iter().enumerate().take(rows) {
+                    let row = &sprite[j];
+                    for i in 0..8 {
+                        let new_value = row >> (7 - i) & 0x01;
                         if new_value == 1 {
-                            let xi = (x + start_x) % SCREEN_WIDTH;
-                            let yi = (row + start_y) % SCREEN_HEIGHT;
-                            let pixel_to_change = (xi + yi * SCREEN_WIDTH) as usize;
-
-                            let old_value: bool = self.display[pixel_to_change] == 1;
+                            let xi = (x + i) % SCREEN_WIDTH;
+                            let yj = (y + j) % SCREEN_HEIGHT;
+                            let old_value = self.display[xi + yj * SCREEN_WIDTH] == 1;
                             if old_value {
                                 self.v[0xF] = 1;
                             }
-
-                            self.display[pixel_to_change] = ((new_value == 1) ^ old_value) as u8;
-                        }
+                            let display_value = ((new_value == 1) ^ old_value) as u8;
+                            self.display[xi + yj * SCREEN_WIDTH] = display_value;
+                       }
                     }
-                    current_loc += 1;
                 }
+
                 self.pc += 2;
             }
             0xE000 ..= 0xEFFF => {
@@ -382,7 +372,7 @@ impl Cpu {
                     }
                     _ => {
                         self.pc += 2;
-                        let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
+                        let error = EmulateCycleError { message: format!("{:X} opcode not handled b", opcode) };
                         return Err(error);
                     }
                 }
@@ -425,7 +415,7 @@ impl Cpu {
                     0x29 => {
                         // Fx29 - LD F, Vx
                         // Set I = location of sprite for digit Vx.
-                        self.i = self.v[x] as u16;
+                        self.i = self.v[x] as u16 * 5;
                     }
                     0x33 => {
                         // Fx33 - LD B, Vx
@@ -451,7 +441,7 @@ impl Cpu {
                     }
                     _ => {
                         self.pc += 2;
-                        let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
+                        let error = EmulateCycleError { message: format!("{:X} F opcode not handled", opcode) };
                         return Err(error);
                     }
                 }
@@ -459,13 +449,10 @@ impl Cpu {
             }
             _ => {
                 self.pc += 2;
-                let error = EmulateCycleError { message: format!("{:X} opcode not handled", opcode) };
+                let error = EmulateCycleError { message: format!("{:X} opcode not handled d", opcode) };
                 return Err(error);
             }
         }
-
-        // TODO increate the program counter by 2 here instead of in every match block?   
-        //    leave it in the _ error handler match though?
 
         // Decrease timers
         if self.dt > 0 {
@@ -514,7 +501,6 @@ impl Cpu {
 mod tests {
     use super::*;
 
-
     #[test]
     fn addition_overflows() {
         let mut cpu = Cpu::new();
@@ -526,39 +512,4 @@ mod tests {
         assert_eq!(cpu.v[0], 1);
     }
 
-
-//     #[test]
-//     fn it_draws_a_sprite() {
-//         let mut cpu = Cpu::new();
-//         cpu.v[11] = 32;
-//         cpu.v[12] = 0;
-//         cpu.i = 746;
-
-//         // DRW V11 V12 1
-//         cpu.memory[0x2FC] = 0xDB as u8;
-//         cpu.memory[0x2FD] = 0xC1 as u8;
-
-//         cpu.pc = 0x2FC;
-
-//         assert_eq!(cpu.display[32], 0);
-//         assert_eq!(cpu.pc, 764);
-
-
-//         // let s = String::from_utf8(cpu.display.to_vec()).expect("Found invalid UTF-8");
-//         // println!("aaaa");
-//         // println!("{}", s);
-
-// //        println!("{:?}", cpu.display.to_vec());
-
-
-//         cpu.emulate_cycle().unwrap();
-// //        println!("{:?}", cpu.display.to_vec());
-
-//         assert_eq!(cpu.display[31], 0);
-//         assert_eq!(cpu.display[32], 1);
-//         assert_eq!(cpu.display[32], 0);
-//         assert_eq!(cpu.pc, 766);
-// //        cpu.emulate_cycle().unwrap();
-// //                        println!("{}", cpu.display[31]);
-//     }
 }
