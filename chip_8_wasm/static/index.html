@@ -26,7 +26,7 @@
        display: grid;
        grid-template-columns: 50% 25% 25%;
        margin: 0 auto;
-       grid-template-rows: 130px 260px; 30px; 300px;
+       grid-template-rows: 190px 260px; 30px; 300px;
      }
 
      .screen {
@@ -77,20 +77,19 @@
       <header>
         <div class="info">
           <h2>CHIP-8</h2>
-          <p>A WebAssembly <a href="https://en.wikipedia.org/wiki/CHIP-8">CHIP-8</a> emulator implemented in Rust.</p>
+          <p>A WebAssembly <a href="https://en.wikipedia.org/wiki/CHIP-8">CHIP-8</a> emulator implemented in Rust. Click the start button below to play pong. The paddle on the left is controlled with the <i>1</i> and <i>q</i> keys, the right paddle with <i>4</i> and <i>r</i>.</p>
+          <p></p>
         </div>
       </header>
 
 
       <div class="screen">
         <canvas id="chip8-canvas" width="64" height="32" style="transform: scale(8); transform-origin: top left"></canvas>
-        <!-- <canvas id="chip8-canvas" width="64" height="32"></canvas> -->
       </div>
 
       <div class="controls">
         <button id="start-button">Start</button>
         <button id="stop-button" disabled>Stop</button>
-        <button id="reset-button" disabled>Reset</button>
         <button id="step-button">Step</button>
       </div>
 

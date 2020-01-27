@@ -76,8 +76,10 @@ impl Cpu {
             st: 0,
             keys: [false; 16]
         };
+// // 0x050-0x0A0 - Used for the built in 4x5 pixel font set (0-F)
+//        cpu.memory[..80].clone_from_slice(&CHIP8_FONT_SET[..80]);
 
-        cpu.memory[..80].clone_from_slice(&CHIP8_FONT_SET[..80]);
+        cpu.memory[0x050..0x0A0].clone_from_slice(&CHIP8_FONT_SET[..80]);
         cpu
     }
 
@@ -186,8 +188,8 @@ impl Cpu {
                 let x = ((opcode & 0x0F00) >> 8) as usize;
                 let kk = (opcode & 0x00FF) as u8;
 
-                let (value, _) = self.v[x].overflowing_add(kk);
-                self.v[x as usize] = value;
+                let (result, _) = self.v[x].overflowing_add(kk);
+                self.v[x] = result;
                 self.pc += 2;
             },
             0x8000..=0x8FFF => {
